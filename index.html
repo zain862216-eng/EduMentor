@@ -1,0 +1,762 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}[hidden]{display:none!important}</style></head><body><title>EduMentor AI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:wght@600;800&family=Noto+Naskh+Arabic:wght@400;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+/* Layout: teacher standing at the left, chalkboard (or setup desk) on the right; stacks on phones. */
+:root{
+  --bg:#E8EDEE; --surface:#F7F9F9; --ink:#15222B; --muted:#58696F; --line:#C5D0D3;
+  --accent:#E3A008; --accent-ink:#1C1500; --focus:#1E5AA8;
+  --board:#1D3A33; --chalk:#F1EEE4; --chalk-dim:#AEBFB5; --chalk-yellow:#F4CF5A; --frame:#8A6A44;
+  --good:#6FD08C; --bad:#FF9585; --good-bg:#244B3A; --bad-bg:#52302B;
+  --wall:#D6E3DC; --floor:#B8AD99;
+  --suit:#22324A; --suit-2:#16223A; --skin:#D8A07C; --skin-2:#BF8761; --hair:#1D1A17; --tie:#E3A008; --shirt:#F8F8F4;
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-display:"Bricolage Grotesque","Atkinson Hyperlegible",system-ui,sans-serif;
+  --font-urdu:"Noto Naskh Arabic","Segoe UI",Tahoma,serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E181C; --surface:#152329; --ink:#E6EDEF; --muted:#8FA2A9; --line:#27393F;
+  --accent:#F2B53B; --accent-ink:#201700; --focus:#79B1F5; --wall:#22403D; --floor:#2D2B27; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E181C; --surface:#152329; --ink:#E6EDEF; --muted:#8FA2A9; --line:#27393F;
+  --accent:#F2B53B; --accent-ink:#201700; --focus:#79B1F5; --wall:#22403D; --floor:#2D2B27; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
+.app{max-width:1180px;margin:0 auto}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;margin-bottom:18px}
+.top h1{font-family:var(--font-display);font-weight:800;font-size:clamp(22px,3.2vw,30px);margin:0;letter-spacing:-.01em;flex:1 1 auto;min-width:0}
+.top h1 .sub{display:block;font-family:var(--font-body);font-weight:400;font-size:14px;letter-spacing:0;color:var(--muted);margin-top:2px}
+.steps{display:flex;gap:6px;list-style:none;margin:0;padding:0;counter-reset:s;flex-wrap:wrap}
+.steps li{counter-increment:s;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-size:14px;background:var(--surface)}
+.steps li::before{content:counter(s);display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--ink);font-size:12px;font-weight:700}
+.steps li.active{border-color:var(--accent);color:var(--ink);font-weight:700}
+.steps li.active::before{background:var(--accent);color:var(--accent-ink)}
+.steps li.done::before{content:"\2713";background:var(--good);color:#0C2417}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:700;min-height:42px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.55;cursor:default}
+.stage{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,1fr);gap:20px;align-items:start}
+/* Teacher */
+.teacher{background:var(--wall);border-radius:16px;overflow:hidden;position:sticky;top:12px;border:1px solid var(--line)}
+.teacher .scene{position:relative;padding:14px 10px 0}
+.teacher svg{display:block;width:100%;height:auto;max-height:300px}
+.teacher .floor{position:absolute;left:0;right:0;bottom:0;height:12px;background:var(--floor)}
+.plate{background:var(--suit-2);color:#F1EEE4;padding:10px 14px;display:flex;flex-direction:column;gap:2px}
+.plate b{font-family:var(--font-display);font-size:17px;letter-spacing:.01em}
+.plate span{font-size:14px;color:#C9D3DC;min-height:21px}
+.eyes{transform-box:fill-box;transform-origin:center;animation:blink 5.5s infinite}
+.mouth-open{opacity:0;transform-box:fill-box;transform-origin:center}
+.speaking .mouth-open{opacity:1;animation:talk .32s ease-in-out infinite alternate}
+.speaking .mouth-smile{opacity:0}
+.head{transform-origin:120px 175px}
+.speaking .head{animation:nod 1.3s ease-in-out infinite}
+.thinking .head{transform:rotate(-5deg)}
+.thinking .brow-r{transform:translateY(-4px)}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes talk{from{transform:scaleY(.25)}to{transform:scaleY(1.25)}}
+@keyframes nod{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(1.2deg)}}
+/* Setup desk */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.card h2{font-family:var(--font-display);font-size:22px;margin:0}
+.card label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:14px}
+.card input[type=text],.card select,.card textarea,.qa input[type=text],.qa select{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;font-weight:400;min-width:0;width:100%}
+.card textarea{resize:vertical;min-height:220px;line-height:1.45;font-size:16px}
+.pasterow{display:flex;gap:6px 18px;flex-wrap:wrap;align-items:center;margin-top:-6px}
+.pasterow .fine{flex:1 1 auto}
+.drop{position:relative;display:flex;flex-direction:column;gap:10px;border:2px dashed var(--line);border-radius:14px;padding:20px 18px;align-items:center;text-align:center;cursor:pointer;background:var(--bg)}
+.drop:hover,.drop.over,.drop:focus-within{border-color:var(--accent)}
+.drop .pick{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:10px 20px;font-weight:700;color:var(--accent-ink)!important}
+.drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.drop strong{font-size:17px}
+.drop span{font-weight:400;color:var(--muted)}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.check{flex-direction:row!important;align-items:center;gap:10px!important;font-weight:400!important}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+.link{background:none;border:none;color:var(--focus);text-decoration:underline;cursor:pointer;padding:0;align-self:flex-start;font-weight:700}
+.fine{font-size:13px;color:var(--muted);margin:0}
+.msg{margin:0;min-height:22px;font-size:14px}
+.msg.err{color:#B3261E}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .msg.err{color:#FF9585}}
+:root[data-theme="dark"] .msg.err{color:#FF9585}
+/* Board */
+.board{background:var(--board);color:var(--chalk);border:10px solid var(--frame);border-radius:8px;padding:22px 22px 26px;min-height:440px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 0 -4px rgba(0,0,0,.18)}
+.kicker{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-dim);margin:0}
+.btitle{font-family:var(--font-display);font-weight:800;font-size:clamp(24px,3.4vw,36px);line-height:1.15;margin:0;color:var(--chalk-yellow);text-wrap:balance}
+.bpoints{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.bpoints li{padding-left:26px;position:relative;font-size:19px;animation:rise .5s both}
+.bpoints li::before{content:"";position:absolute;left:2px;top:.72em;width:14px;height:2px;background:var(--chalk-yellow);border-radius:2px}
+.bpoints li:nth-child(2){animation-delay:.15s}.bpoints li:nth-child(3){animation-delay:.3s}.bpoints li:nth-child(4){animation-delay:.45s}.bpoints li:nth-child(5){animation-delay:.6s}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.bbody{border-top:1px dashed rgba(241,238,228,.28);padding-top:12px;max-height:46vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth}
+.bbody:empty{display:none}
+.line{margin:0;font-size:18px;line-height:1.55;opacity:.6;transition:opacity .25s}
+.line.cur{opacity:1}
+.line.ur{direction:rtl;text-align:right;font-family:var(--font-urdu);font-size:21px;line-height:1.9;color:var(--chalk-yellow)}
+.line.q{color:var(--chalk-yellow);opacity:1;font-weight:700}
+.bextra{display:flex;flex-direction:column;gap:10px}
+.bextra:empty{display:none}
+.opts{display:grid;gap:10px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;background:rgba(241,238,228,.08);border:2px solid rgba(241,238,228,.35);color:var(--chalk);border-radius:12px;padding:12px 14px;cursor:pointer;font-size:18px;min-height:48px}
+.opt .ltr{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--chalk);color:var(--board);font-weight:700;font-size:15px}
+.opt:hover:not(:disabled){border-color:var(--chalk-yellow);background:rgba(241,238,228,.14)}
+.opt:disabled{cursor:default;color:var(--chalk)}
+.opt.right{border-color:var(--good);background:var(--good-bg)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.score{font-family:var(--font-display);font-weight:800;font-size:clamp(44px,9vw,76px);line-height:1;color:var(--chalk-yellow);margin:4px 0}
+.chalkbtn{background:var(--chalk);color:var(--board);border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;min-height:44px}
+.chalkbtn.ghost{background:transparent;color:var(--chalk);border:2px solid rgba(241,238,228,.5)}
+.dots::after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.2s steps(4,end) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%,100%{content:"..."}}
+.tray{height:10px;background:var(--frame);border-radius:0 0 6px 6px;margin:-2px 8px 0;filter:brightness(.9)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.controls .grow{flex:1 1 auto;min-width:0;color:var(--muted);font-size:14px}
+.qa{margin-top:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.qrow{display:flex;gap:8px;flex-wrap:wrap}
+.qrow input[type=text]{flex:1 1 220px}
+.qrow select{width:auto}
+.btn.on{background:var(--bad-bg);color:var(--chalk)}
+@media (max-width:820px){
+  .stage{grid-template-columns:1fr}
+  .teacher{position:static;display:grid;grid-template-columns:118px minmax(0,1fr);align-items:end}
+  .teacher .scene{padding:8px 6px 0}
+  .teacher svg{max-height:150px}
+  .plate{height:100%;justify-content:center}
+  .board{padding:16px 14px 20px;min-height:360px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.speaking .mouth-open{opacity:1}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1>EduMentor AI <span class="sub">Smart Classroom Teacher</span></h1>
+    <ol class="steps" aria-label="Class progress">
+      <li>Lesson</li><li>Questions</li><li>Quiz</li>
+    </ol>
+    <button class="btn" id="newBtn" type="button" hidden>New chapter</button>
+  </header>
+
+  <main class="stage">
+    <aside class="teacher" id="teacher" aria-label="Teacher">
+      <div class="scene">
+        <svg viewBox="0 0 240 300" role="img" aria-label="Sir Hamza, a teacher in a suit and glasses">
+          <!-- body -->
+          <path d="M8 300 C8 242 48 214 94 207 L146 207 C192 214 232 242 232 300 Z" fill="var(--suit)"/>
+          <rect x="104" y="168" width="32" height="46" rx="12" fill="var(--skin-2)"/>
+          <path d="M94 205 L120 266 L146 205 Z" fill="var(--shirt)"/>
+          <path d="M92 208 L120 270 L96 284 L72 228 Z" fill="var(--suit-2)"/>
+          <path d="M148 208 L120 270 L144 284 L168 228 Z" fill="var(--suit-2)"/>
+          <path d="M113 226 h14 l-3 10 h-8 z" fill="var(--tie)"/>
+          <path d="M115 236 h10 l5 56 l-10 8 l-10 -8 z" fill="var(--tie)"/>
+          <rect x="146" y="262" width="18" height="4" rx="2" fill="var(--shirt)" opacity=".8"/>
+          <!-- head -->
+          <g class="head">
+            <circle cx="70" cy="116" r="9" fill="var(--skin-2)"/><circle cx="170" cy="116" r="9" fill="var(--skin-2)"/>
+            <ellipse cx="120" cy="112" rx="50" ry="60" fill="var(--skin)"/>
+            <path d="M67 104 C58 50 98 36 124 38 C156 38 182 54 173 104 C168 80 150 68 124 69 C96 70 76 80 67 104 Z" fill="var(--hair)"/>
+            <path d="M96 52 C112 44 140 44 158 56" stroke="#3A332D" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+            <path class="brow-l" d="M86 91 Q100 84 114 90" stroke="var(--hair)" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <path class="brow-r" d="M126 90 Q140 84 154 91" stroke="var(--hair)" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <g class="eyes"><circle cx="100" cy="108" r="5" fill="#241B16"/><circle cx="140" cy="108" r="5" fill="#241B16"/></g>
+            <rect x="80" y="94" width="40" height="30" rx="11" fill="#FFFFFF" fill-opacity=".16" stroke="#1B1B1F" stroke-width="3.5"/>
+            <rect x="120" y="94" width="40" height="30" rx="11" fill="#FFFFFF" fill-opacity=".16" stroke="#1B1B1F" stroke-width="3.5"/>
+            <path d="M118 106 Q120 102 122 106" stroke="#1B1B1F" stroke-width="3.5" fill="none"/>
+            <path d="M80 106 L70 110 M160 106 L170 110" stroke="#1B1B1F" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M120 114 Q114 132 123 136" stroke="var(--skin-2)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <path class="mouth-smile" d="M104 150 Q120 164 136 150" stroke="#7A2F2F" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <ellipse class="mouth-open" cx="120" cy="153" rx="13" ry="8" fill="#6B2327"/>
+          </g>
+        </svg>
+        <div class="floor"></div>
+      </div>
+      <div class="plate"><b>Sir Hamza</b><span id="status" aria-live="polite">Ready when you are</span></div>
+    </aside>
+
+    <section class="desk">
+      <form class="card" id="setup" autocomplete="off">
+        <h2>Today's chapter</h2>
+        <label for="pasteText">Paste the chapter text here
+          <textarea id="pasteText" rows="10" placeholder="Touch and hold inside this box, then tap Paste"></textarea>
+        </label>
+        <div class="pasterow">
+          <span class="fine" id="count">0 characters</span>
+          <button type="button" class="link" id="clearBtn">Clear</button>
+          <button type="button" class="link" id="sampleBtn">Use a sample chapter</button>
+        </div>
+        <div class="drop" id="drop">
+          <strong>Or pick a PDF file</strong>
+          <span id="fileNote">This may not work inside the phone app. If nothing happens, paste the text above.</span>
+          <span class="btn pick" aria-hidden="true">Choose PDF</span>
+          <input type="file" id="pdfInput" aria-label="Choose a PDF file">
+        </div>
+        <div class="row">
+          <label for="chTitle">Chapter title<input type="text" id="chTitle" maxlength="120" placeholder="e.g. Photosynthesis"></label>
+          <label for="grade">Class level
+            <select id="grade">
+              <option>Grade 5</option><option>Grade 6</option><option>Grade 7</option><option>Grade 8</option>
+              <option selected>Grade 9</option><option>Grade 10</option><option>Grade 11 to 12</option><option>University</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label for="nq">Quiz length
+            <select id="nq"><option value="5" selected>5 questions</option><option value="8">8 questions</option><option value="10">10 questions</option></select>
+          </label>
+          <label class="check" for="urduOn" style="align-self:end;min-height:44px"><input type="checkbox" id="urduOn" checked> Explain hard ideas in Urdu too</label>
+        </div>
+        <p class="msg" id="setupMsg" role="status"></p>
+        <button class="btn" type="button" id="testVoiceBtn">Test the teacher's voice</button>
+        <button class="btn primary" type="submit" id="startBtn">Start class</button>
+        <p class="fine">Claude writes the lesson, answers and quiz, so a class uses your Claude usage. You will be asked to allow this once.</p>
+      </form>
+
+      <div id="room" hidden>
+        <div class="board" id="board">
+          <p class="kicker" id="bKicker"></p>
+          <h2 class="btitle" id="bTitle"></h2>
+          <ul class="bpoints" id="bPoints"></ul>
+          <div class="bbody" id="bBody"></div>
+          <div class="bextra" id="bExtra"></div>
+        </div>
+        <div class="tray"></div>
+        <div class="controls">
+          <button class="btn" type="button" id="pauseBtn">Pause</button>
+          <button class="btn" type="button" id="skipBtn">Skip ahead</button>
+          <button class="btn" type="button" id="voiceBtn" aria-pressed="true">Voice on</button>
+          <button class="btn" type="button" id="testVoiceBtn2">Test voice</button>
+          <span class="grow" id="progress"></span>
+        </div>
+        <p class="fine" id="voiceNote" role="status"></p>
+        <form class="qa" id="qaForm" hidden>
+          <div class="qrow">
+            <input type="text" id="qInput" maxlength="400" placeholder="Type your question for Sir Hamza" aria-label="Your question">
+            <select id="micLang" aria-label="Voice language" hidden><option value="en-US">English</option><option value="ur-PK">Urdu</option></select>
+            <button class="btn" type="button" id="micBtn" hidden>Speak</button>
+            <button class="btn primary" type="submit" id="askBtn">Ask</button>
+          </div>
+          <div class="qrow"><button class="btn" type="button" id="quizBtn">No more questions, start the quiz</button></div>
+          <p class="fine" id="qaMsg" role="status"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const el={};['teacher','status','setup','room','board','bKicker','bTitle','bPoints','bBody','bExtra','pauseBtn','skipBtn','voiceBtn','progress','qaForm','qInput','micBtn','micLang','askBtn','quizBtn','qaMsg','newBtn','pdfInput','drop','fileNote','pasteText','sampleBtn','chTitle','grade','nq','urduOn','setupMsg','startBtn','count','clearBtn','testVoiceBtn','testVoiceBtn2','voiceNote'].forEach(k=>el[k]=$(k));
+
+const S={text:'',title:'',grade:'Grade 9',urdu:true,nq:5,session:0,paused:false,muted:false,slides:[],genDone:false,genErr:null,waiter:null,
+  genCtl:null,quizCtl:null,qaCtl:null,quizP:null,endQA:null,onPick:null,hist:[],busy:false,resume:[],quizQs:null,titleGuessed:''};
+let sample=null, sayId=0, cur=null, uid=0, lastCur=null, TTS=('speechSynthesis' in window), voices=[];
+
+/* ---------- Claude access ---------- */
+const samplePromise=(async()=>{try{sample=window.claude?await window.claude.use('sample'):null;}catch(e){sample=null;}return sample;})();
+
+function errCopy(e){
+  switch(e&&e.code){
+    case 'not_granted':return 'Claude access was declined. Allow it to start the class.';
+    case 'rate_limited':return 'Too many requests, or your Claude usage limit was reached. Wait a little and try again.';
+    case 'session_expired':return 'Your session expired. Sign in again and retry.';
+    case 'sampling_disabled':return 'Claude is not available for this account.';
+    case 'refused':return 'Claude could not work with this text. Try a different chapter.';
+    case 'prompt_too_large':return 'This chapter is too long to send in one go. Paste a shorter part.';
+    case 'invalid_json':case 'empty_completion':return 'Claude sent back something unreadable. Try again.';
+    default:return 'There was a connection problem. Try again.';
+  }
+}
+
+/* ---------- Voices and speech ---------- */
+function loadVoices(){try{voices=speechSynthesis.getVoices()||[];}catch(e){voices=[];}}
+if(TTS){loadVoices();try{speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}}
+function pickVoice(kind){
+  if(kind==='ur')return voices.find(v=>/^ur/i.test(v.lang))||null;
+  const en=voices.filter(v=>/^en/i.test(v.lang));
+  const prefs=[/google uk english male/i,/daniel/i,/david/i,/aaron/i,/mark/i,/james/i,/ravi/i,/male/i];
+  for(const re of prefs){const v=en.find(x=>re.test(x.name));if(v)return v;}
+  return en.find(v=>/en-(in|gb)/i.test(v.lang))||en[0]||null;
+}
+function setSpeaking(b){el.teacher.classList.toggle('speaking',!!b);}
+function setThinking(b){el.teacher.classList.toggle('thinking',!!b);}
+function setStatus(t){el.status.textContent=t;}
+const NOSOUND='No sound started. Turn the phone volume up and switch off silent mode. If there is still no voice, open this page in your phone browser (Chrome or Safari) instead of inside the Claude app. Until then the lesson runs in reading mode.';
+function voiceWarn(msg){el.voiceNote.textContent=msg;if(!el.setup.hidden){el.setupMsg.className='msg err';el.setupMsg.textContent=msg;}}
+function unlockSpeech(){
+  if(!TTS||S.unlocked)return;
+  try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u);S.unlocked=true;}catch(e){}
+}
+function testVoice(){
+  if(!('speechSynthesis' in window)){voiceWarn('This browser cannot speak. Open the page in Chrome or Safari on your phone. Until then the lesson runs in reading mode.');return;}
+  TTS=true;loadVoices();
+  let started=false;
+  try{
+    speechSynthesis.cancel();
+    const ut=new SpeechSynthesisUtterance('Hello students. Can you hear me? Today we will learn together.');
+    const v=pickVoice('en');if(v){ut.voice=v;ut.lang=v.lang;}else ut.lang='en-US';
+    ut.rate=.94;ut.pitch=.85;
+    ut.onstart=()=>{started=true;S.ttsStarted=true;setSpeaking(true);el.setupMsg.className='msg';el.setupMsg.textContent='Playing now. If you cannot hear it, raise the volume.';el.voiceNote.textContent='Playing now. If you cannot hear it, raise the volume.';};
+    ut.onend=()=>setSpeaking(false);
+    ut.onerror=ev=>{setSpeaking(false);voiceWarn('The voice failed ('+ev.error+'). '+NOSOUND);};
+    speechSynthesis.speak(ut);
+  }catch(e){voiceWarn(NOSOUND);return;}
+  setTimeout(()=>{if(!started)voiceWarn(NOSOUND);},3000);
+}
+function stopCur(){if(cur)cur.stop();}
+function stopSpeaking(){sayId++;stopCur();try{if(TTS)speechSynthesis.cancel();}catch(e){}setSpeaking(false);}
+function speakOne(u){
+  return new Promise(resolve=>{
+    let spoken='',voice=null;
+    if(u.l==='ur'){const v=pickVoice('ur');if(v){spoken=u.text;voice=v;}else if(u.roman){spoken=u.roman;voice=pickVoice('en');}}
+    else{spoken=u.text;voice=pickVoice('en');}
+    const words=(u.text||'').split(/\s+/).length;
+    const useTTS=TTS&&!S.muted&&spoken;
+    let finished=false,timer=null,gotStart=false;
+    const done=ok=>{if(finished)return;finished=true;clearTimeout(timer);cur=null;setSpeaking(false);resolve(ok);};
+    cur={stop:()=>{try{if(TTS)speechSynthesis.cancel();}catch(e){}done(false);}};
+    setSpeaking(true);
+    if(useTTS){
+      const ut=new SpeechSynthesisUtterance(spoken);
+      if(voice){ut.voice=voice;ut.lang=voice.lang;}else ut.lang=u.l==='ur'?'ur-PK':'en-US';
+      ut.rate=.94;ut.pitch=.85;
+      ut.onstart=()=>{gotStart=true;S.ttsStarted=true;el.voiceNote.textContent='';};
+      ut.onend=()=>done(true);
+      ut.onerror=ev=>{if(ev.error==='not-allowed'||ev.error==='synthesis-failed'){TTS=false;voiceWarn(NOSOUND);}done(ev.error==='interrupted'||ev.error==='canceled'?false:true);};
+      timer=setTimeout(()=>done(true),Math.max(6000,spoken.length*140));
+      setTimeout(()=>{if(!finished){try{speechSynthesis.cancel();speechSynthesis.speak(ut);}catch(e){TTS=false;done(true);}}},60);
+      setTimeout(()=>{if(!finished&&!gotStart&&!S.ttsStarted)voiceWarn(NOSOUND);},3500);
+    }else{timer=setTimeout(()=>done(true),Math.max(1100,words*340));}
+  });
+}
+async function say(units,opts){
+  const show=!(opts&&opts.show===false);
+  const my=++sayId;stopCur();
+  for(let i=0;i<units.length;i++){
+    for(;;){
+      if(my!==sayId)return false;
+      if(S.paused){await new Promise(r=>S.resume.push(r));continue;}
+      if(show)showUnit(units[i]);
+      const ok=await speakOne(units[i]);
+      if(my!==sayId)return false;
+      if(ok)break;
+    }
+  }
+  return true;
+}
+function showUnit(u){
+  if(!u.node){
+    const p=document.createElement('p');p.className='line '+u.l;p.textContent=u.text;
+    if(u.l==='ur'){p.dir='rtl';p.lang='ur';}
+    el.bBody.appendChild(p);u.node=p;
+  }
+  if(lastCur&&lastCur!==u.node)lastCur.classList.remove('cur');
+  u.node.classList.add('cur');lastCur=u.node;
+  el.bBody.scrollTop=el.bBody.scrollHeight;
+}
+function wakeResume(){const w=S.resume;S.resume=[];w.forEach(r=>r());}
+
+/* ---------- Text helpers ---------- */
+function splitSentences(t){return (t.match(/[^.!?]+(?:[.!?]+["')\]]*|$)/g)||[t]).map(s=>s.trim()).filter(Boolean);}
+function mkUnits(segs){
+  const out=[];
+  if(typeof segs==='string')segs=[{l:'en',t:segs}];
+  if(!Array.isArray(segs))return out;
+  for(const s of segs){
+    if(!s)continue;const t=String(s.t==null?'':s.t).trim();if(!t)continue;
+    if(s.l==='ur'){if(!S.urdu)continue;out.push({l:'ur',text:t,roman:String(s.r||'').trim(),id:++uid});}
+    else splitSentences(t).forEach(x=>out.push({l:'en',text:x,id:++uid}));
+  }
+  return out;
+}
+const E=t=>({l:'en',t}),U=(t,r)=>({l:'ur',t,r});
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function takeObjects(buf){
+  const objs=[];let depth=0,start=-1,inStr=false,esc=false;
+  for(let i=0;i<buf.length;i++){
+    const c=buf[i];
+    if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;continue;}
+    if(c==='"'){if(depth>0)inStr=true;continue;}
+    if(c==='{'){if(depth===0)start=i;depth++;}
+    else if(c==='}'&&depth>0){depth--;if(depth===0){try{objs.push(JSON.parse(buf.slice(start,i+1)));}catch(e){}start=-1;}}
+  }
+  return {objs,rest:depth>0&&start>=0?buf.slice(start):''};
+}
+
+/* ---------- Board ---------- */
+function setBoard(kicker,title,points){
+  el.bKicker.textContent=kicker||'';el.bTitle.textContent=title||'';
+  el.bPoints.replaceChildren();(points||[]).forEach(p=>{const li=document.createElement('li');li.textContent=p;el.bPoints.appendChild(li);});
+  el.bBody.replaceChildren();el.bExtra.replaceChildren();lastCur=null;
+}
+function setStage(n){document.querySelectorAll('.steps li').forEach((li,i)=>{li.classList.toggle('active',i+1===n);li.classList.toggle('done',i+1<n);});}
+function chalkBtn(label,ghost,fn){const b=document.createElement('button');b.type='button';b.className='chalkbtn'+(ghost?' ghost':'');b.textContent=label;b.onclick=fn;return b;}
+
+/* ---------- Setup: PDF reading ---------- */
+if(window.pdfjsLib){try{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}catch(e){}}
+async function readPdf(file){
+  if(!window.pdfjsLib)throw new Error('The PDF reader did not load.');
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const pages=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    el.setupMsg.className='msg';el.setupMsg.textContent='Reading page '+p+' of '+pdf.numPages+'...';
+    const page=await pdf.getPage(p);const tc=await page.getTextContent();
+    pages.push(tc.items.map(it=>it.str+(it.hasEOL?'\n':' ')).join(''));
+  }
+  return pages.join('\n\n').replace(/-\n(?=[a-z])/g,'').replace(/[ \t]+/g,' ').replace(/ ?\n ?/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+function guessTitle(t){
+  const lines=t.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,8);
+  return lines.find(l=>l.length>=3&&l.length<=90&&!/^\d+$/.test(l))||'';
+}
+async function handleFile(file){
+  if(!file)return;
+  el.setupMsg.className='msg';
+  try{
+    let text;
+    if(/\.pdf$/i.test(file.name)||file.type==='application/pdf')text=await readPdf(file);
+    else if(/\.(txt|md)$/i.test(file.name)||/^text\//.test(file.type))text=(await file.text()).trim();
+    else{el.setupMsg.className='msg err';el.setupMsg.textContent='Please choose a PDF file (or a text file).';return;}
+    if(text.length<200){el.setupMsg.className='msg err';el.setupMsg.textContent='Almost no text could be read. A scanned PDF has no text to read, so paste the chapter text instead.';return;}
+    el.pasteText.value=text;updateCount();
+    el.fileNote.textContent=file.name+' · '+text.length.toLocaleString()+' characters read';
+    if(!el.chTitle.value||el.chTitle.value===S.titleGuessed){S.titleGuessed=guessTitle(text);el.chTitle.value=S.titleGuessed;}
+    el.setupMsg.textContent='Chapter ready. Check the title, then start the class.';
+  }catch(e){
+    el.setupMsg.className='msg err';
+    el.setupMsg.textContent='This file could not be read. Paste the chapter text into the box instead.';
+  }
+}
+function updateCount(){
+  const t=el.pasteText.value.trim();
+  el.count.textContent=t.length?t.length.toLocaleString()+' characters'+(t.length<200?' (add more, at least a few paragraphs)':''):'0 characters';
+  if(t.length>=200&&!el.chTitle.value){S.titleGuessed=guessTitle(t);el.chTitle.value=S.titleGuessed;}
+}
+['input','change','paste','keyup'].forEach(ev=>el.pasteText.addEventListener(ev,()=>setTimeout(updateCount,0)));
+el.clearBtn.addEventListener('click',()=>{el.pasteText.value='';el.chTitle.value='';S.titleGuessed='';updateCount();el.pasteText.focus();});
+el.pdfInput.addEventListener('change',()=>handleFile(el.pdfInput.files[0]));
+['dragenter','dragover'].forEach(ev=>el.drop.addEventListener(ev,e=>{e.preventDefault();el.drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>el.drop.addEventListener(ev,e=>{e.preventDefault();el.drop.classList.remove('over');}));
+el.drop.addEventListener('drop',e=>handleFile(e.dataTransfer&&e.dataTransfer.files[0]));
+el.sampleBtn.addEventListener('click',()=>{
+  el.pasteText.value=SAMPLE;updateCount();el.chTitle.value='Photosynthesis: How Plants Make Food';S.titleGuessed=el.chTitle.value;el.grade.value='Grade 7';
+  el.fileNote.textContent='Sample chapter loaded';el.setupMsg.className='msg';el.setupMsg.textContent='Sample chapter loaded. Press Start class.';
+});
+const SAMPLE=`Photosynthesis: How Plants Make Food
+
+Every living thing needs energy. Animals get energy by eating food, but plants make their own food. The process by which green plants make food using sunlight is called photosynthesis. The word comes from two Greek words: photo, meaning light, and synthesis, meaning putting together.
+
+What a plant needs
+A plant needs three things for photosynthesis: sunlight, carbon dioxide and water. Leaves take in carbon dioxide from the air through tiny holes called stomata. Roots absorb water from the soil, and this water travels up through the stem to the leaves in tubes called xylem. Sunlight is caught by chlorophyll, the green pigment found in small structures called chloroplasts inside leaf cells.
+
+How the process works
+Inside the chloroplasts, chlorophyll absorbs light energy. This energy is used to split water into hydrogen and oxygen. The plant then combines the hydrogen with carbon dioxide to build glucose, a simple sugar. Oxygen is released into the air through the stomata as a by-product. The word equation is: carbon dioxide plus water, in the presence of sunlight and chlorophyll, gives glucose plus oxygen.
+
+What happens to the glucose
+The plant uses some glucose immediately for energy. Some is changed into starch and stored in roots, stems and seeds. Potatoes and rice are rich in starch for this reason. Some glucose is used to make cellulose, which builds strong cell walls, and some is used to make proteins and oils.
+
+Why photosynthesis matters
+Photosynthesis is the base of almost every food chain, because animals eat plants or eat other animals that ate plants. It also keeps the air balanced. Plants take in carbon dioxide and release the oxygen that humans and animals breathe. Forests are therefore often called the lungs of the Earth.
+
+Factors that affect the rate
+The rate of photosynthesis increases with more light, up to a limit. It also depends on the amount of carbon dioxide, the temperature and the supply of water. Very high temperatures can damage the enzymes involved, and the rate then falls. A plant kept in the dark cannot make food and slowly weakens.
+
+An experiment
+To show that light is needed, a part of a leaf is covered with black paper and the plant is kept in sunlight for several hours. When the leaf is tested with iodine solution, the covered part stays brown, while the uncovered part turns blue-black. Blue-black shows that starch is present, which proves that photosynthesis happened only where light reached the leaf.`;
+
+/* ---------- Prompts ---------- */
+function urduRule(){return S.urdu?'Teach mainly in clear English. After a difficult idea you may add one short Urdu explanation as its own segment {"l":"ur","t":"<one or two sentences in Urdu script>","r":"<the same sentences in Roman Urdu>"}. Use at most two Urdu segments per slide.':'Use English only. Never use "ur" segments.';}
+function chapterBlock(limit){return 'CHAPTER TITLE: '+S.title+'\n\nCHAPTER TEXT:\n"""\n'+S.text.slice(0,limit)+'\n"""';}
+function lessonPrompt(){
+  return `You are Sir Hamza, a warm, clear and encouraging classroom teacher. Your students are in ${S.grade}. Teach the chapter below as a spoken lesson that students can learn from and later be quizzed on. Use only the chapter's content and cover all of it in order, including definitions, examples, formulas and steps.
+
+Output format: a stream of JSON objects, one per line, with no code fences and no other text. Each object is:
+{"kind":"greeting"|"intro"|"slide"|"wrap","title":"short board title","points":["2 to 4 key points, at most 8 words each"],"speech":[{"l":"en","t":"what Sir Hamza says aloud"}]}
+
+Order of objects:
+1. One "greeting": greet the students (Assalam o Alaikum, good morning), say who you are in one line, and say what chapter you will teach today. No points.
+2. One "intro": say what the chapter is about and give 3 or 4 learning goals as points.
+3. Between 6 and 14 "slide" objects, one per idea in the chapter, in chapter order. Each speech is 80 to 140 words of natural spoken teaching with a simple example where it helps. Points are the key facts to copy into notes.
+4. One "wrap": recap in under 70 words, then say that now it is time for questions.
+
+${urduRule()}
+Write the speech so it sounds good read aloud: no markdown, no bullet symbols, and write symbols and formulas in words.
+
+${chapterBlock(120000)}`;
+}
+function qaRules(){
+  return `You are Sir Hamza, a warm, clear classroom teacher. The students are in ${S.grade}. You taught the chapter below and now the students are asking questions. Answer the student's latest question in 40 to 110 words, friendly and simple, with a short example when it helps. Base the answer on the chapter. If it goes beyond the chapter but is related school knowledge, answer briefly and say that it goes beyond the chapter. If it is unrelated to learning, kindly steer back to the lesson. ${urduRule()}
+Reply with only JSON: {"speech":[{"l":"en","t":"..."}]}. The speech is read aloud, so use no markdown.
+
+${chapterBlock(80000)}`;
+}
+function quizPrompt(){
+  return `You are Sir Hamza. Write ${S.nq} multiple choice questions for ${S.grade} students based only on the chapter below, spread across different parts of it, with a gentle rise in difficulty. Each has exactly four options and exactly one correct option. Vary the position of the correct option. Do not use "all of the above" or "none of the above".
+Reply with only JSON in this shape:
+{"questions":[{"q":"question text","options":["A text","B text","C text","D text"],"answer":0,"explain":[{"l":"en","t":"1 to 3 sentences teaching why the correct option is right and what a common mistake is"}]}]}
+"answer" is the zero-based index of the correct option. ${S.urdu?'You may add one short Urdu segment to "explain" as {"l":"ur","t":"Urdu script","r":"Roman Urdu"}.':'Use English only.'} Write it so it reads well aloud.
+
+${chapterBlock(80000)}`;
+}
+
+/* ---------- Class flow ---------- */
+el.setup.addEventListener('submit',e=>{e.preventDefault();startClass();});
+async function startClass(){
+  unlockSpeech();
+  const text=el.pasteText.value.trim();
+  el.setupMsg.className='msg';
+  if(text.length<200){el.setupMsg.className='msg err';el.setupMsg.textContent='Add the chapter first: choose a PDF or paste at least a few paragraphs.';return;}
+  el.startBtn.disabled=true;
+  await samplePromise;
+  if(!sample){el.setupMsg.className='msg err';el.setupMsg.textContent='Claude is not available in this view. Open this page signed in to Claude to start a class.';el.startBtn.disabled=false;return;}
+  S.text=text;S.title=el.chTitle.value.trim()||guessTitle(text)||'Today\'s chapter';S.grade=el.grade.value;S.urdu=el.urduOn.checked;S.nq=parseInt(el.nq.value,10)||5;
+  S.session++;const sess=S.session;
+  S.slides=[];S.genDone=false;S.genErr=null;S.hist=[];S.paused=false;S.quizQs=null;
+  el.pauseBtn.textContent='Pause';
+  el.setup.hidden=true;el.room.hidden=false;el.newBtn.hidden=false;el.startBtn.disabled=false;el.qaForm.hidden=true;
+  setStage(1);setBoard('Getting ready','Sir Hamza is preparing today\'s lesson',[]);
+  el.bBody.textContent='';el.bExtra.replaceChildren(chalkBtn('Stop',true,resetAll));
+  el.bPoints.replaceChildren();
+  setStatus('Preparing the lesson...');setThinking(true);
+  el.progress.textContent='';
+  generateLesson(sess);
+  const ok=await teachLesson(sess);
+  if(sess!==S.session||!ok)return;
+  await questionTime(sess);
+  if(sess!==S.session)return;
+  await quizTime(sess);
+}
+function wake(){const w=S.waiter;S.waiter=null;if(w)w();}
+async function generateLesson(sess){
+  const ctl=new AbortController();S.genCtl=ctl;let buf='';
+  const push=o=>{
+    if(sess!==S.session||!o||typeof o!=='object')return;
+    const units=mkUnits(o.speech);if(!units.length)return;
+    const kind=['greeting','intro','slide','wrap'].includes(o.kind)?o.kind:'slide';
+    S.slides.push({kind,title:String(o.title||'').trim(),points:(Array.isArray(o.points)?o.points:[]).map(String).filter(Boolean).slice(0,5),units});
+    wake();
+  };
+  try{
+    const res=await sample(lessonPrompt(),{signal:ctl.signal,onText:({delta})=>{if(sess!==S.session)return;buf+=delta;const r=takeObjects(buf);buf=r.rest;r.objs.forEach(push);}});
+    if(res.truncated&&sess===S.session)S.genErr={code:'truncated'};
+  }catch(e){if(e&&e.code!=='cancelled')S.genErr=e||{code:'upstream_error'};}
+  if(sess===S.session){S.genDone=true;wake();}
+}
+async function teachLesson(sess){
+  let i=0;
+  for(;;){
+    if(sess!==S.session)return false;
+    while(S.paused&&sess===S.session)await new Promise(r=>S.resume.push(r));
+    if(i<S.slides.length){await presentSlide(i,sess);i++;continue;}
+    if(S.genDone)break;
+    setThinking(true);setStatus('Preparing the next part...');
+    await new Promise(r=>{S.waiter=r;});
+  }
+  if(sess!==S.session)return false;
+  setThinking(false);
+  if(!S.slides.length){
+    setBoard('Lesson','The lesson could not start',[]);
+    const p=document.createElement('p');p.className='line q';p.textContent=errCopy(S.genErr);el.bBody.appendChild(p);
+    el.bExtra.replaceChildren(chalkBtn('Back to the chapter',false,resetAll));setStatus('Something went wrong');return false;
+  }
+  if(S.genErr&&S.genErr.code!=='cancelled'){
+    const p=document.createElement('p');p.className='line q';p.textContent='The lesson ended early. '+(S.genErr.code==='truncated'?'It was longer than Claude could write in one go.':errCopy(S.genErr));el.bBody.appendChild(p);
+    await sleep(1200);
+  }
+  return true;
+}
+async function presentSlide(i,sess){
+  const sl=S.slides[i];setThinking(false);
+  const part=S.slides.slice(0,i+1).filter(s=>s.kind==='slide').length;
+  const kicker=sl.kind==='greeting'?'Welcome':sl.kind==='intro'?'Introduction':sl.kind==='wrap'?'Recap':'Lesson · part '+part;
+  setBoard(kicker,sl.title||(sl.kind==='greeting'?S.title:''),sl.points);
+  setStatus('Teaching');
+  el.progress.textContent=S.genDone?('Part '+(i+1)+' of '+S.slides.length):('Part '+(i+1)+' (more on the way)');
+  await say(sl.units);
+  if(sess!==S.session)return;
+  await sleep(450);
+}
+async function questionTime(sess){
+  setStage(2);setThinking(false);
+  setBoard('Question time','Now it is your turn to ask',['Ask anything about this chapter','Type your question below']);
+  el.progress.textContent='';
+  el.qaForm.hidden=false;el.qaMsg.textContent='';el.qInput.focus({preventScroll:true});
+  S.quizP=makeQuiz(sess);
+  const done=new Promise(r=>{S.endQA=r;});
+  say(mkUnits([E('That is the end of the lesson. Now it is time for your questions. Ask me anything about the chapter, and I will explain it.'),U('اب آپ سوال پوچھ سکتے ہیں۔','Ab aap sawal pooch sakte hain.')])).then(ok=>{if(ok&&sess===S.session&&!S.busy)setStatus('Listening for your question');});
+  setStatus('Listening for your question');
+  await done;
+  S.endQA=null;el.qaForm.hidden=true;
+  if(S.qaCtl)S.qaCtl.abort();
+}
+el.qaForm.addEventListener('submit',e=>{e.preventDefault();const q=el.qInput.value.trim();if(q)askQuestion(q);});
+el.quizBtn.addEventListener('click',()=>{if(S.endQA)S.endQA();});
+async function askQuestion(q){
+  if(S.busy)return;
+  const sess=S.session;S.busy=true;stopSpeaking();
+  el.qInput.value='';el.askBtn.disabled=true;el.qaMsg.textContent='';
+  setBoard('Your question',q,[]);
+  const wait=document.createElement('p');wait.className='line cur';wait.textContent='Sir Hamza is thinking';wait.classList.add('dots');el.bBody.appendChild(wait);
+  setThinking(true);setStatus('Thinking...');
+  const turns=[{role:'user',content:qaRules()}];
+  S.hist.slice(-6).forEach(h=>{turns.push({role:'user',content:h.q});turns.push({role:'assistant',content:h.a});});
+  turns.push({role:'user',content:q});
+  const ctl=new AbortController();S.qaCtl=ctl;
+  try{
+    const r=await sample.json(turns,{cache:false,signal:ctl.signal});
+    if(sess!==S.session)return;
+    let segs=r&&(r.speech||r.segments||r.answer);
+    const units=mkUnits(segs);
+    if(!units.length)throw {code:'empty_completion'};
+    S.hist.push({q,a:units.filter(u=>u.l==='en').map(u=>u.text).join(' ')});
+    setThinking(false);setBoard('Your question',q,[]);setStatus('Answering');
+    await say(units);
+    if(sess===S.session)setStatus('Listening for your question');
+  }catch(e){
+    if(sess!==S.session||(e&&e.code==='cancelled'))return;
+    setThinking(false);setBoard('Your question',q,[]);
+    const p=document.createElement('p');p.className='line q';p.textContent=errCopy(e);el.bBody.appendChild(p);setStatus('Listening for your question');
+  }finally{S.busy=false;el.askBtn.disabled=false;}
+}
+/* Voice input (the page may not be allowed to use the microphone) */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(SR){el.micBtn.hidden=false;el.micLang.hidden=false;
+  el.micBtn.addEventListener('click',()=>{
+    try{
+      const r=new SR();r.lang=el.micLang.value;r.interimResults=false;
+      r.onresult=e=>{el.qInput.value=e.results[0][0].transcript;};
+      r.onerror=()=>{el.qaMsg.textContent='Voice input is not available in this view. Please type your question.';el.micBtn.hidden=true;el.micLang.hidden=true;};
+      r.onend=()=>el.micBtn.classList.remove('on');
+      el.micBtn.classList.add('on');el.qaMsg.textContent='Listening...';r.start();
+    }catch(err){el.qaMsg.textContent='Voice input is not available in this view. Please type your question.';el.micBtn.hidden=true;el.micLang.hidden=true;}
+  });
+}
+
+/* ---------- Quiz ---------- */
+function makeQuiz(sess){
+  const ctl=new AbortController();S.quizCtl=ctl;
+  return sample.json(quizPrompt(),{signal:ctl.signal}).then(r=>{
+    const arr=Array.isArray(r)?r:(r&&r.questions)||[];
+    const qs=arr.filter(x=>x&&typeof x.q==='string'&&Array.isArray(x.options)&&x.options.length>=2&&Number.isInteger(x.answer)&&x.answer>=0&&x.answer<x.options.length)
+      .map(x=>({q:x.q.trim(),options:x.options.slice(0,4).map(String),answer:x.answer,explain:x.explain}));
+    if(!qs.length)throw {code:'invalid_json'};
+    return {qs};
+  }).catch(e=>({error:e||{code:'upstream_error'}}));
+}
+async function quizTime(sess){
+  setStage(3);setThinking(false);el.progress.textContent='';
+  setBoard('Quiz','Quiz time',['Choose the best answer for each question','Sir Hamza will tell you if you are right']);
+  setStatus('Starting the quiz');
+  await say(mkUnits([E('Now it is quiz time. I will ask you a few questions from today\'s lesson. Tap the answer you think is correct. Let us begin.'),U('چلیے شروع کرتے ہیں۔','Chaliye shuru karte hain.')]),{show:false});
+  if(sess!==S.session)return;
+  let r=await S.quizP;
+  while(r.error){
+    if(sess!==S.session||r.error.code==='cancelled')return;
+    setBoard('Quiz','The questions could not be prepared',[]);
+    const p=document.createElement('p');p.className='line q';p.textContent=errCopy(r.error);el.bBody.appendChild(p);
+    await new Promise(res=>{el.bExtra.replaceChildren(chalkBtn('Try again',false,res));});
+    setBoard('Quiz','Writing your questions',[]);el.bBody.textContent='Sir Hamza is preparing them';el.bBody.classList.add('dots');setThinking(true);
+    r=await makeQuiz(sess);el.bBody.classList.remove('dots');setThinking(false);
+  }
+  if(sess!==S.session)return;
+  if(!S.quizP||S.quizP===null){return;}
+  S.quizQs=r.qs;
+  await runQuiz(sess);
+}
+async function runQuiz(sess){
+  const qs=S.quizQs;let score=0;
+  for(let i=0;i<qs.length;i++){
+    const ok=await askMcq(qs[i],i,qs.length,sess);
+    if(sess!==S.session)return;
+    if(ok)score++;
+  }
+  showResults(score,qs.length,sess);
+}
+async function askMcq(q,i,n,sess){
+  setBoard('Quiz · question '+(i+1)+' of '+n,q.q,[]);
+  setThinking(false);setStatus('Your turn');el.progress.textContent='Question '+(i+1)+' of '+n;
+  const L='ABCD';const btns=[];
+  const list=document.createElement('div');list.className='opts';
+  q.options.forEach((o,k)=>{
+    const b=document.createElement('button');b.type='button';b.className='opt';
+    const l=document.createElement('span');l.className='ltr';l.textContent=L[k];
+    const t=document.createElement('span');t.textContent=o;
+    b.append(l,t);list.appendChild(b);btns.push(b);
+  });
+  el.bExtra.appendChild(list);
+  const picked=new Promise(res=>{S.onPick=res;btns.forEach((b,k)=>{b.onclick=()=>res(k);});});
+  const read=[{l:'en',text:'Question '+(i+1)+'. '+q.q}].concat(q.options.map((o,k)=>({l:'en',text:'Option '+L[k]+'. '+o})));
+  say(read,{show:false});
+  const k=await picked;S.onPick=null;
+  if(sess!==S.session)return false;
+  const ok=k===q.answer;
+  btns.forEach((b,j)=>{b.disabled=true;if(j===q.answer)b.classList.add('right');else if(j===k)b.classList.add('wrong');});
+  const segs=ok
+    ?[E(pick(['Excellent! That is the correct answer.','Well done! You got it right.','Perfect! That is correct.'])),U('شاباش!','Shabash!')]
+    :[E('Not quite, but that is okay.'),E('The correct answer is option '+L[q.answer]+': '+q.options[q.answer]+'.'),U('کوئی بات نہیں، غور سے سنیں۔','Koi baat nahin, ghaur se sunein.')];
+  const units=mkUnits(segs.concat(Array.isArray(q.explain)?q.explain:(q.explain?[E(String(q.explain))]:[])));
+  const head=document.createElement('p');head.className='line q';head.textContent=ok?'Correct!':'Not this time. The right answer is '+L[q.answer]+'.';
+  head.style.color=ok?'var(--good)':'var(--bad)';
+  el.bBody.appendChild(head);
+  const last=i===n-1;
+  const next=document.createElement('button');next.type='button';next.className='chalkbtn';next.textContent=last?'See my score':'Next question';
+  el.bExtra.appendChild(next);
+  const nextClick=new Promise(res=>{next.onclick=res;});
+  setStatus(ok?'Well done':'Let me explain');
+  say(units);
+  await nextClick;stopSpeaking();
+  return ok;
+}
+async function showResults(score,n,sess){
+  setThinking(false);el.progress.textContent='';
+  const pct=score/n;
+  const msg=pct>=.8?'Outstanding work. You understood this chapter very well.':pct>=.5?'Good effort. Revise the parts you missed and you will master it.':'Do not worry. Read the chapter once more and try the quiz again.';
+  setBoard('Quiz finished','Your score',[]);
+  const big=document.createElement('p');big.className='score';big.textContent=score+' / '+n;
+  const m=document.createElement('p');m.className='line q';m.textContent=msg;
+  el.bBody.append(big,m);
+  el.bExtra.replaceChildren(
+    chalkBtn('Retake the quiz',false,()=>{stopSpeaking();S.session++;const s=S.session;runQuiz(s);}),
+    chalkBtn('Teach another chapter',true,resetAll));
+  setStage(4);setStatus('Class complete');
+  await say(mkUnits([E('You scored '+score+' out of '+n+'. '+msg),E('Thank you, everyone. Class dismissed. See you next time.'),U('خدا حافظ!','Khuda hafiz!')]),{show:false});
+}
+document.addEventListener('keydown',e=>{
+  if(!S.onPick||/INPUT|TEXTAREA|SELECT/.test((e.target&&e.target.tagName)||''))return;
+  const k='abcd1234'.indexOf(e.key.toLowerCase());
+  if(k>=0){const b=el.bExtra.querySelectorAll('.opt')[k%4];if(b&&!b.disabled)b.click();}
+});
+
+/* ---------- Controls ---------- */
+el.pauseBtn.addEventListener('click',()=>{
+  if(S.paused){S.paused=false;el.pauseBtn.textContent='Pause';wakeResume();}
+  else{S.paused=true;el.pauseBtn.textContent='Resume';stopCur();}
+});
+el.skipBtn.addEventListener('click',()=>{S.paused=false;el.pauseBtn.textContent='Pause';stopSpeaking();wakeResume();});
+el.voiceBtn.addEventListener('click',()=>{
+  S.muted=!S.muted;el.voiceBtn.textContent=S.muted?'Voice off':'Voice on';el.voiceBtn.setAttribute('aria-pressed',String(!S.muted));
+  if(S.muted){try{if(TTS)speechSynthesis.cancel();}catch(e){}}
+});
+function resetAll(){
+  S.session++;[S.genCtl,S.quizCtl,S.qaCtl].forEach(c=>{try{c&&c.abort();}catch(e){}});
+  stopSpeaking();S.paused=false;wakeResume();wake();if(S.endQA)S.endQA();if(S.onPick)S.onPick=null;
+  S.busy=false;el.askBtn.disabled=false;
+  el.room.hidden=true;el.setup.hidden=false;el.newBtn.hidden=true;el.qaForm.hidden=true;
+  setStage(0);setThinking(false);setStatus('Ready when you are');el.setupMsg.className='msg';el.setupMsg.textContent='';
+  window.scrollTo(0,0);
+}
+el.newBtn.addEventListener('click',resetAll);
+el.testVoiceBtn.addEventListener('click',testVoice);
+el.testVoiceBtn2.addEventListener('click',()=>{stopSpeaking();testVoice();});
+})();
+</script>
+</body></html>
